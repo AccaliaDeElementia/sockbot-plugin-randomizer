@@ -1,0 +1,22 @@
+{
+  "name": "sockbot-plugin-randomizer",
+  "version": "0.1.0",
+  "description": "A randomizer plugin for sockbot",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AccaliaDeElementia/sockbot-plugin-randomizer.git"
+  },
+  "author": "Accalia Elementia <accalia@sockdrawer.io> (https://github.com/AccaliaDeElementia)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/AccaliaDeElementia/sockbot-plugin-randomizer/issues"
+  },
+  "homepage": "https://github.com/AccaliaDeElementia/sockbot-plugin-randomizer#readme",
+  "dependencies": {
+    "random-js": "git+https://github.com/AccaliaDeElementia/random-js.git"
+  }
+}
