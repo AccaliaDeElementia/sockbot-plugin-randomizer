@@ -50,16 +50,14 @@ describe('sockbot-plugin-randomizer', () => {
         });
     });
     describe('pick', () => {
-        let instance = null,
-            sandbox = null;
+        let instance = null;
         const randomized = ['j', 'h', 'b', 'c', 'd'];
         beforeEach(() => {
-            sandbox = sinon.sandbox.create();
             instance = randomizer({}, {});
-            instance.random = new Random();
-            sandbox.stub(instance.random, 'sample').returns(randomized);
+            instance.random = {
+                sample: sinon.stub().returns(randomized)
+            };
         });
-        afterEach(() => sandbox.restore());
         it('should return a promise', () => {
             return instance.pick({
                 args: [1, 2],
@@ -120,7 +118,7 @@ describe('sockbot-plugin-randomizer', () => {
             const expected = randomized.join(', ');
             const spy = sinon.spy();
             return instance.pick({
-                args: [1,2,3],
+                args: [1, 2, 3],
                 reply: spy
             }).then(() => {
                 const response = spy.firstCall.args[0];
