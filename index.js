@@ -1,5 +1,10 @@
 'use strict';
-
+/**
+ * Ransomizer plugin, does things with randomization.
+ * @module sockbot-plugin-randomizer
+ * @author Accalia
+ * @license MIT
+ */
 const Random = require('random-js');
 
 const defaultConfig = {
@@ -8,7 +13,16 @@ const defaultConfig = {
     pick: true
 };
 
-exports.plugin = function plugin(forum, config) {
+/**
+ * Plugin generation function.
+ *
+ * Returns a plugin object bound to the provided forum provider
+ *
+ * @param {Provider} forum Active forum Provider
+ * @param {object} config Plugin Configuration
+ * @returns {Plugin} An instance of the randomizer plugin
+ */
+module.exports = function randomizer(forum, config) {
     Object.keys(defaultConfig).forEach((key) => {
         if (!config.hasOwnProperty(key)) {
             config[key] = defaultConfig[key];
@@ -18,9 +32,16 @@ exports.plugin = function plugin(forum, config) {
     const instance = {
         activate: activate,
         deactivate: () => {},
-        shuffle: shuffle
+        shuffle: shuffle,
+        pick: pick
     };
 
+    /**
+     * Permute the arguments of the command and reply with results
+     *
+     * @param {Command} command The command to premutate
+     * @returns {Promise} Resolves when processing is complete
+     */
     function shuffle(command) {
         return new Promise((resolve) => {
             const input = command.args.join(', ');
@@ -30,11 +51,18 @@ exports.plugin = function plugin(forum, config) {
             resolve();
         });
     }
-    
+
+    /**
+     * Pick a sample from the arguments of the command and reply with results
+     *
+     * @param {Command} command the command to process
+     *
+     * @returns {Promise} Resolves when processing is complete
+     */
     function pick(command) {
         return new Promise((resolve) => {
             let count = command.args.shift();
-            if (!/^[0-9]+$/.test(count)){
+            if (!/^[0-9]+$/.test(count)) {
                 command.args.unshift(count);
                 count = '1';
             }
@@ -46,6 +74,13 @@ exports.plugin = function plugin(forum, config) {
         });
     }
 
+    /**
+     * Activate the plugin.
+     *
+     * Register the configured commands and choose the randomness engine
+     *
+     * @returns {Promise} Resolves when plugin is fully activated
+     */
     function activate() {
         if (config.crypto) {
             instance.random = new Random(Random.engines.browserCrypto);
@@ -54,13 +89,15 @@ exports.plugin = function plugin(forum, config) {
             engine.autoSeed();
             instance.random = new Random(engine);
         }
+        const commands = [];
         if (config.shuffle) {
-            forum.Commands.add('shuffle', 'Shuffle arguments into a random order', shuffle);
+            commands.push(['shuffle', 'Shuffle arguments into a random order', shuffle]);
         }
         if (config.pick) {
-            forum.Commands.add('pick', 'pick elements from arguments', pick);
+            commands.push(['pick', 'pick elements from arguments', pick]);
         }
+        return Promise.all(commands.map((command) => forum.Commands.add.apply(forum.Commands, command)));
     }
     return instance;
 };
-exports.plugin.defaultConfig = defaultConfig;
+module.exports.defaultConfig = defaultConfig;

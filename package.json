@@ -4,7 +4,13 @@
   "description": "A randomizer plugin for sockbot",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "sockbot",
+    "lint": "eslint .",
+    "preistanbul": "npm run lint",
+    "istanbul": "istanbul cover node_modules/mocha/bin/_mocha --print both -x 'external/**' -x 'build/**' --include-all-sources -- --recursive -R spec",
+    "pretest": "npm run istanbul",
+    "test": "istanbul check-coverage coverage/coverage.json",
+    "mocha": "mocha --recursive -R dot"
   },
   "repository": {
     "type": "git",
@@ -18,5 +24,16 @@
   "homepage": "https://github.com/AccaliaDeElementia/sockbot-plugin-randomizer#readme",
   "dependencies": {
     "random-js": "git+https://github.com/AccaliaDeElementia/random-js.git"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "chai-as-promised": "^5.3.0",
+    "chai-string": "^1.2.0",
+    "codeclimate-test-reporter": "^0.3.1",
+    "eslint": "^2.8.0",
+    "istanbul": "^0.4.3",
+    "mocha": "^2.4.5",
+    "sinon": "^1.17.3",
+    "sinon-as-promised": "^4.0.0"
   }
 }
