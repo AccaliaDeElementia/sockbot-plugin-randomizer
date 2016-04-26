@@ -51,15 +51,13 @@ describe('sockbot-plugin-randomizer', () => {
     });
     describe('pick', () => {
         let instance = null,
-            mt19937 = null,
             sandbox = null;
+        const randomized = ['j', 'h', 'b', 'c', 'd'];
         beforeEach(() => {
             sandbox = sinon.sandbox.create();
             instance = randomizer({}, {});
-            mt19937 = Random.engines.mt19937();
-            mt19937.seed(20606891);
-            instance.random = new Random(mt19937);
-            sandbox.spy(instance.random, 'sample');
+            instance.random = new Random();
+            sandbox.stub(instance.random, 'sample').returns(randomized);
         });
         afterEach(() => sandbox.restore());
         it('should return a promise', () => {
@@ -77,14 +75,56 @@ describe('sockbot-plugin-randomizer', () => {
                 instance.random.sample.calledWith(input).should.be.true;
             });
         });
-        it('should return sampled input', () => {
-            const input = ['5', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
-            const expected = ['j', 'h', 'b', 'c', 'd'];
+        it('should sample input with sample size specified', () => {
+            const input = ['42', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
+            const expectedInput = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
             return instance.pick({
                 args: input,
                 reply: () => 0
             }).then(() => {
-                instance.random.sample.firstCall.returnValue.should.eql(expected);
+                const actualInput = instance.random.sample.firstCall.args[0];
+                actualInput.should.eql(expectedInput);
+                const size = instance.random.sample.firstCall.args[1];
+                size.should.equal(42);
+                instance.random.sample.calledWith(input).should.be.true;
+            });
+        });
+        it('should sample input with default sample size when size not specified', () => {
+            const input = ['1a', '2b', '3c', '4d', '5e', '6f'];
+            const expectedInput = ['1a', '2b', '3c', '4d', '5e', '6f'];
+            return instance.pick({
+                args: input,
+                reply: () => 0
+            }).then(() => {
+                const actualInput = instance.random.sample.firstCall.args[0];
+                actualInput.should.eql(expectedInput);
+                const size = instance.random.sample.firstCall.args[1];
+                size.should.equal(1);
+                instance.random.sample.calledWith(input).should.be.true;
+            });
+        });
+        it('should include input in response', () => {
+            const input = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
+            const expected = input.join(', ');
+            input.unshift('5'); // the sample size
+            const spy = sinon.spy();
+            return instance.pick({
+                args: input,
+                reply: spy
+            }).then(() => {
+                const response = spy.firstCall.args[0];
+                response.should.contain(expected);
+            });
+        });
+        it('should include sampled input at end of response', () => {
+            const expected = randomized.join(', ');
+            const spy = sinon.spy();
+            return instance.pick({
+                args: [1,2,3],
+                reply: spy
+            }).then(() => {
+                const response = spy.firstCall.args[0];
+                response.should.endWith(expected);
             });
         });
     });
