@@ -10,8 +10,33 @@ const Random = require('random-js');
 const defaultConfig = {
     crypto: true,
     shuffle: true,
-    pick: true
+    pick: true,
+    magic8: true,
+    wasteaguid: true
 };
+
+const magic8responses = [
+    'It is certain',
+    'It is decidedly so',
+    'Without a doubt',
+    'Yes, definitely',
+    'You may rely on it',
+    'As I see it, yes',
+    'Most likely',
+    'Outlook good',
+    'Yes',
+    'Signs point to yes',
+    'Reply hazy try again',
+    'Ask again later',
+    'Better not tell you now',
+    'Cannot predict now',
+    'Concentrate and ask again',
+    'Don\'t count on it',
+    'My reply is no',
+    'My sources say no',
+    'Outlook not so good',
+    'Very doubtful'
+];
 
 /**
  * Plugin generation function.
@@ -33,7 +58,10 @@ module.exports = function randomizer(forum, config) {
         activate: activate,
         deactivate: () => {},
         shuffle: shuffle,
-        pick: pick
+        pick: pick,
+        magic8: magic8,
+        magic8responses: magic8responses,
+        wasteaguid: wasteaguid
     };
 
     /**
@@ -75,6 +103,42 @@ module.exports = function randomizer(forum, config) {
     }
 
     /**
+     * Waste a GUID
+     * 
+     * Thanks for that >:-(
+     *
+     * @param {Command} command the command to process
+     *
+     * @returns {Promise} Resolves when processing is complete
+     */
+    function wasteaguid(command) {
+        return new Promise((resolve) => {
+            const uuid = instance.random.uuid4();
+            const txt = `Once they are gone, they're gone for good\n\n### ${uuid}\n\n` +
+                'Thank You for making one less GUID available to the rest of us!';
+            command.reply(txt);
+            resolve();
+        });
+
+    }
+
+    /**
+     * Emulate a Magic 8 ball
+     *
+     * @param {Command} command the command to process
+     *
+     * @returns {Promise} Resolves when processing is complete
+     */
+    function magic8(command) {
+        return new Promise((resolve) => {
+            const response = instance.random.sample(magic8responses, 1)[0];
+            const txt = `The spirits say.... ${response}`;
+            command.reply(txt);
+            resolve();
+        });
+    }
+
+    /**
      * Activate the plugin.
      *
      * Register the configured commands and choose the randomness engine
@@ -95,6 +159,12 @@ module.exports = function randomizer(forum, config) {
         }
         if (config.pick) {
             commands.push(['pick', 'pick elements from arguments', pick]);
+        }
+        if (config.magic8) {
+            commands.push(['magic8', 'consult the spirits for guidance', magic8]);
+        }
+        if (config.wasteaguid) {
+            commands.push(['wasteaguid', 'waste a GUID', wasteaguid]);
         }
         return Promise.all(commands.map((command) => forum.Commands.add.apply(forum.Commands, command)));
     }

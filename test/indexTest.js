@@ -25,7 +25,7 @@ describe('sockbot-plugin-randomizer', () => {
         it('should return an object with a deactivate function', () => {
             randomizer({}, {}).deactivate.should.be.a('function');
         });
-        const commands = ['shuffle', 'pick'];
+        const commands = ['shuffle', 'pick', 'magic8'];
         commands.forEach((command) => {
             it(`should return an object with a command handler function for ${command}`, () => {
                 randomizer({}, {})[command].should.be.a('function');
@@ -33,7 +33,7 @@ describe('sockbot-plugin-randomizer', () => {
         });
     });
     describe('config', () => {
-        const defaultKeys = ['crypto', 'shuffle', 'pick'];
+        const defaultKeys = ['crypto', 'shuffle', 'pick', 'magic8'];
         defaultKeys.forEach((key) => {
             it(`should ensure key ${key} exists in config`, () => {
                 const cfg = {};
@@ -130,6 +130,49 @@ describe('sockbot-plugin-randomizer', () => {
             instance.random.sample.throws(expected);
             return instance.pick({
                 args: [1, 2],
+                reply: () => 0
+            }).should.be.rejectedWith(expected);
+        });
+    });
+    describe('magic8', () => {
+        let instance = null,
+            randomized = null;
+        beforeEach(() => {
+            randomized = [`answer${Math.random()}`];
+            instance = randomizer({}, {});
+            instance.random = {
+                sample: sinon.stub().returns(randomized)
+            };
+        });
+        it('should return a promise', () => {
+            return instance.magic8({
+                args: [],
+                reply: () => 0
+            }).should.be.fulfilled;
+        });
+        it('should reply with spiritual response', () => {
+            const spy = sinon.spy();
+            return instance.magic8({
+                args: [],
+                reply: spy
+            }).then(() => {
+                spy.calledWith(`The spirits say.... ${randomized}`).should.be.true;
+            });
+        });
+        it('select response from standard responses', () => {
+            const spy = sinon.spy();
+            return instance.magic8({
+                args: [],
+                reply: spy
+            }).then(() => {
+                instance.random.sample.calledWith(instance.magic8responses, 1).should.be.true;
+            });
+        });
+        it('should reject when sample throws', () => {
+            const expected = new Error('bad');
+            instance.random.sample.throws(expected);
+            return instance.magic8({
+                args: [],
                 reply: () => 0
             }).should.be.rejectedWith(expected);
         });
@@ -263,6 +306,20 @@ describe('sockbot-plugin-randomizer', () => {
             config.pick = false;
             return instance.activate().then(() => {
                 Commands.add.calledWith('pick').should.be.false;
+            });
+        });
+        it('should add magic8 command when config enables magic8', () => {
+            config.magic8 = true;
+            return instance.activate().then(() => {
+                const text = 'consult the spirits for guidance';
+                Commands.add.calledWith('magic8', text, instance.magic8).should.be.true;
+                Commands.add.alwaysCalledOn(Commands).should.be.true;
+            });
+        });
+        it('should not add magic8 command when config disables magic8', () => {
+            config.magic8 = false;
+            return instance.activate().then(() => {
+                Commands.add.calledWith('magic8').should.be.false;
             });
         });
     });
