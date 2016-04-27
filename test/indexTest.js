@@ -125,20 +125,24 @@ describe('sockbot-plugin-randomizer', () => {
                 response.should.endWith(expected);
             });
         });
+        it('should reject when sample throws', () => {
+            const expected = new Error('bad');
+            instance.random.sample.throws(expected);
+            return instance.pick({
+                args: [1, 2],
+                reply: () => 0
+            }).should.be.rejectedWith(expected);
+        });
     });
     describe('shuffle', () => {
-        let instance = null,
-            mt19937 = null,
-            sandbox = null;
+        let instance = null;
+        const randomized = [4, 0, 2, 9, 5, 1, 7, 6, 8, 3];
         beforeEach(() => {
-            sandbox = sinon.sandbox.create();
             instance = randomizer({}, {});
-            mt19937 = Random.engines.mt19937();
-            mt19937.seed(19860602);
-            instance.random = new Random(mt19937);
-            sandbox.spy(instance.random, 'shuffle');
+            instance.random = {
+                shuffle: sinon.stub().returns(randomized)
+            };
         });
-        afterEach(() => sandbox.restore());
         it('should return a promise', () => {
             return instance.shuffle({
                 args: [1, 2],
@@ -152,16 +156,6 @@ describe('sockbot-plugin-randomizer', () => {
                 reply: () => 0
             }).then(() => {
                 instance.random.shuffle.calledWith(input).should.be.true;
-            });
-        });
-        it('should return shuffled input', () => {
-            const input = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-            const expected = [4, 0, 2, 9, 5, 1, 7, 6, 8, 3];
-            return instance.shuffle({
-                args: input,
-                reply: () => 0
-            }).then(() => {
-                instance.random.shuffle.firstCall.returnValue.should.eql(expected);
             });
         });
         it('should reply with input as part of the response', () => {
@@ -187,7 +181,7 @@ describe('sockbot-plugin-randomizer', () => {
         });
         it('should reply with shuffled input as part of the response', () => {
             const input = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-            const expected = [4, 0, 2, 9, 5, 1, 7, 6, 8, 3].join(', ');
+            const expected = randomized.join(', ');
             const spy = sinon.spy();
             return instance.shuffle({
                 args: input,
@@ -195,6 +189,80 @@ describe('sockbot-plugin-randomizer', () => {
             }).then(() => {
                 const text = spy.firstCall.args[0];
                 text.should.endWith(expected);
+            });
+        });
+    });
+    describe('activate()', () => {
+        let instance = null,
+            config = null,
+            Commands = null,
+            sandbox = null;
+        beforeEach(() => {
+            sandbox = sinon.sandbox.create();
+            Commands = {
+                add: sinon.stub().resolves()
+            };
+            config = {};
+            instance = randomizer({
+                Commands: Commands
+            }, config);
+        });
+        afterEach(() => sandbox.restore());
+        it('should create random generator', () => {
+            chai.expect(instance.random).to.be.undefined;
+            return instance.activate().then(() => {
+                instance.random.should.be.an.instanceOf(Random);
+            });
+        });
+        it('should use browserCrypto when config enables crypto', () => {
+            config.crypto = true;
+            return instance.activate().then(() => {
+                instance.random.engine.should.equal(Random.engines.browserCrypto);
+            });
+        });
+        it('should use mersenne twister when config disables crypto', () => {
+            sandbox.spy(Random.engines, 'mt19937');
+            config.crypto = false;
+            return instance.activate().then(() => {
+                Random.engines.mt19937.called.should.be.true;
+            });
+        });
+        it('should configure mersenne twister when config disables crypto', () => {
+            const engine = () => 0;
+            engine.autoSeed = sinon.spy();
+            sandbox.stub(Random.engines, 'mt19937').returns(engine);
+            config.crypto = false;
+            return instance.activate().then(() => {
+                instance.random.engine.should.equal(engine);
+                engine.autoSeed.called.should.be.true;
+            });
+        });
+        it('should add shuffle command when config enables shuffle', () => {
+            config.shuffle = true;
+            return instance.activate().then(() => {
+                const text = 'Shuffle arguments into a random order';
+                Commands.add.calledWith('shuffle', text, instance.shuffle).should.be.true;
+                Commands.add.alwaysCalledOn(Commands).should.be.true;
+            });
+        });
+        it('should not add shuffle command when config disables shuffle', () => {
+            config.shuffle = false;
+            return instance.activate().then(() => {
+                Commands.add.calledWith('shuffle').should.be.false;
+            });
+        });
+        it('should add pick command when config enables pick', () => {
+            config.pick = true;
+            return instance.activate().then(() => {
+                const text = 'pick elements from arguments';
+                Commands.add.calledWith('pick', text, instance.pick).should.be.true;
+                Commands.add.alwaysCalledOn(Commands).should.be.true;
+            });
+        });
+        it('should not add pick command when config disables pick', () => {
+            config.pick = false;
+            return instance.activate().then(() => {
+                Commands.add.calledWith('pick').should.be.false;
             });
         });
     });
