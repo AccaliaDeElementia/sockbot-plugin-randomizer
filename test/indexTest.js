@@ -235,6 +235,50 @@ describe('sockbot-plugin-randomizer', () => {
             });
         });
     });
+    describe('wasteaguid', () => {
+        let instance = null,
+            randomized = null;
+        beforeEach(() => {
+            randomized = `GUID${Math.random()}`;
+            instance = randomizer({}, {});
+            instance.random = {
+                uuid4: sinon.stub().returns(randomized)
+            };
+        });
+        it('should return a promise', () => {
+            return instance.wasteaguid({
+                args: [],
+                reply: () => 0
+            }).should.be.fulfilled;
+        });
+        it('should reply with spiritual response', () => {
+            const spy = sinon.spy();
+            return instance.wasteaguid({
+                args: [],
+                reply: spy
+            }).then(() => {
+                const text = spy.firstCall.args[0];
+                text.should.contain(` ${randomized}\n`);
+            });
+        });
+        it('select guid from random source', () => {
+            const spy = sinon.spy();
+            return instance.wasteaguid({
+                args: [],
+                reply: spy
+            }).then(() => {
+                instance.random.uuid4.called.should.be.true;
+            });
+        });
+        it('should reject when sample throws', () => {
+            const expected = new Error('bad');
+            instance.random.uuid4.throws(expected);
+            return instance.wasteaguid({
+                args: [],
+                reply: () => 0
+            }).should.be.rejectedWith(expected);
+        });
+    });
     describe('activate()', () => {
         let instance = null,
             config = null,
@@ -320,6 +364,20 @@ describe('sockbot-plugin-randomizer', () => {
             config.magic8 = false;
             return instance.activate().then(() => {
                 Commands.add.calledWith('magic8').should.be.false;
+            });
+        });
+        it('should add wasteaguid command when config enables wasteaguid', () => {
+            config.wasteaguid = true;
+            return instance.activate().then(() => {
+                const text = 'waste a GUID';
+                Commands.add.calledWith('wasteaguid', text, instance.wasteaguid).should.be.true;
+                Commands.add.alwaysCalledOn(Commands).should.be.true;
+            });
+        });
+        it('should not add wasteaguid command when config disables wasteaguid', () => {
+            config.wasteaguid = false;
+            return instance.activate().then(() => {
+                Commands.add.calledWith('wasteaguid').should.be.false;
             });
         });
     });

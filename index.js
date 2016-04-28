@@ -12,7 +12,8 @@ const defaultConfig = {
     shuffle: true,
     pick: true,
     magic8: true,
-    wasteaguid: true
+    wasteaguid: true,
+    password: true
 };
 
 const magic8responses = [
@@ -61,7 +62,8 @@ module.exports = function randomizer(forum, config) {
         pick: pick,
         magic8: magic8,
         magic8responses: magic8responses,
-        wasteaguid: wasteaguid
+        wasteaguid: wasteaguid,
+        password: password
     };
 
     /**
@@ -104,7 +106,7 @@ module.exports = function randomizer(forum, config) {
 
     /**
      * Waste a GUID
-     * 
+     *
      * Thanks for that >:-(
      *
      * @param {Command} command the command to process
@@ -119,7 +121,28 @@ module.exports = function randomizer(forum, config) {
             command.reply(txt);
             resolve();
         });
+    }
 
+    /**
+     * Create a password
+     *
+     * @param {Command} command the command to process
+     *
+     * @returns {Promise} Resolves when processing is complete
+     */
+    function password(command) {
+        const pool = '23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz_';
+        return new Promise((resolve) => {
+            const passwd = instance.random.string(32, pool);
+            let txt = null;
+            if (command.parent.ids.post >= 0) {
+                txt = `Your Precompromised Password is: ${passwd}}`;
+            } else {
+                txt = `Your Generated Password is: ${passwd}}`;
+            }
+            command.reply(txt);
+            resolve();
+        });
     }
 
     /**
@@ -165,6 +188,9 @@ module.exports = function randomizer(forum, config) {
         }
         if (config.wasteaguid) {
             commands.push(['wasteaguid', 'waste a GUID', wasteaguid]);
+        }
+        if (config.password) {
+            commands.push(['password', 'generate a secure password', password]);
         }
         return Promise.all(commands.map((command) => forum.Commands.add.apply(forum.Commands, command)));
     }
