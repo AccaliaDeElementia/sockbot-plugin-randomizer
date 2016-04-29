@@ -1,6 +1,6 @@
 {
   "name": "sockbot-plugin-randomizer",
-  "version": "1.0.0",
+  "version": "1.10.0",
   "description": "A randomizer plugin for sockbot",
   "main": "index.js",
   "scripts": {
