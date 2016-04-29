@@ -25,16 +25,37 @@ describe('sockbot-plugin-randomizer', () => {
         it('should return an object with a deactivate function', () => {
             randomizer({}, {}).deactivate.should.be.a('function');
         });
-        const commands = ['shuffle', 'pick', 'magic8'];
-        commands.forEach((command) => {
-            it(`should return an object with a command handler function for ${command}`, () => {
-                randomizer({}, {})[command].should.be.a('function');
-            });
-        });
     });
     describe('config', () => {
-        const defaultKeys = ['crypto', 'shuffle', 'pick', 'magic8'];
-        defaultKeys.forEach((key) => {
+        it('should store config in instance', () => {
+            const cfg = {};
+            const instance = randomizer({}, cfg);
+            instance.config.should.equal(cfg);
+        });
+        it('should accept a non object config', () => {
+            const instance = randomizer({}, true);
+            instance.config.should.be.an('object');
+        });
+        it('should generate default config for non object config', () => {
+            const instance = randomizer({}, true);
+            Object.keys(instance.config).should.have.length.greaterThan(0);
+            Object.keys(instance.config).forEach((key) => {
+                instance.config[key].should.be.true;
+            });
+        });
+        it('should ensure key crypto exists in config', () => {
+            const cfg = {};
+            randomizer({}, cfg);
+            cfg.should.have.any.key('crypto');
+        });
+        it('should not override config value for crypto', () => {
+            const cfg = {};
+            const expected = Math.random();
+            cfg.crypto = expected;
+            randomizer({}, cfg);
+            cfg.crypto.should.equal(expected);
+        });
+        Object.keys(randomizer.randomFns).forEach((key) => {
             it(`should ensure key ${key} exists in config`, () => {
                 const cfg = {};
                 randomizer({}, cfg);
@@ -50,23 +71,26 @@ describe('sockbot-plugin-randomizer', () => {
         });
     });
     describe('pick', () => {
-        let instance = null;
+        let instance = null,
+            pick = null;
         const randomized = ['j', 'h', 'b', 'c', 'd'];
         beforeEach(() => {
-            instance = randomizer({}, {});
-            instance.random = {
-                sample: sinon.stub().returns(randomized)
+            instance = {
+                random: {
+                    sample: sinon.stub().returns(randomized)
+                }
             };
+            pick = randomizer.randomFns.pick.bind(instance);
         });
         it('should return a promise', () => {
-            return instance.pick({
+            return pick({
                 args: [1, 2],
                 reply: () => 0
             }).should.be.fulfilled;
         });
         it('should sample input', () => {
             const input = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
-            return instance.pick({
+            return pick({
                 args: input,
                 reply: () => 0
             }).then(() => {
@@ -76,7 +100,7 @@ describe('sockbot-plugin-randomizer', () => {
         it('should sample input with sample size specified', () => {
             const input = ['42', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
             const expectedInput = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
-            return instance.pick({
+            return pick({
                 args: input,
                 reply: () => 0
             }).then(() => {
@@ -90,7 +114,7 @@ describe('sockbot-plugin-randomizer', () => {
         it('should sample input with default sample size when size not specified', () => {
             const input = ['1a', '2b', '3c', '4d', '5e', '6f'];
             const expectedInput = ['1a', '2b', '3c', '4d', '5e', '6f'];
-            return instance.pick({
+            return pick({
                 args: input,
                 reply: () => 0
             }).then(() => {
@@ -106,7 +130,7 @@ describe('sockbot-plugin-randomizer', () => {
             const expected = input.join(', ');
             input.unshift('5'); // the sample size
             const spy = sinon.spy();
-            return instance.pick({
+            return pick({
                 args: input,
                 reply: spy
             }).then(() => {
@@ -117,7 +141,7 @@ describe('sockbot-plugin-randomizer', () => {
         it('should include sampled input at end of response', () => {
             const expected = randomized.join(', ');
             const spy = sinon.spy();
-            return instance.pick({
+            return pick({
                 args: [1, 2, 3],
                 reply: spy
             }).then(() => {
@@ -128,73 +152,33 @@ describe('sockbot-plugin-randomizer', () => {
         it('should reject when sample throws', () => {
             const expected = new Error('bad');
             instance.random.sample.throws(expected);
-            return instance.pick({
+            return pick({
                 args: [1, 2],
                 reply: () => 0
             }).should.be.rejectedWith(expected);
         });
     });
-    describe('magic8', () => {
-        let instance = null,
-            randomized = null;
-        beforeEach(() => {
-            randomized = [`answer${Math.random()}`];
-            instance = randomizer({}, {});
-            instance.random = {
-                sample: sinon.stub().returns(randomized)
-            };
-        });
-        it('should return a promise', () => {
-            return instance.magic8({
-                args: [],
-                reply: () => 0
-            }).should.be.fulfilled;
-        });
-        it('should reply with spiritual response', () => {
-            const spy = sinon.spy();
-            return instance.magic8({
-                args: [],
-                reply: spy
-            }).then(() => {
-                spy.calledWith(`The spirits say.... ${randomized}`).should.be.true;
-            });
-        });
-        it('select response from standard responses', () => {
-            const spy = sinon.spy();
-            return instance.magic8({
-                args: [],
-                reply: spy
-            }).then(() => {
-                instance.random.sample.calledWith(instance.magic8responses, 1).should.be.true;
-            });
-        });
-        it('should reject when sample throws', () => {
-            const expected = new Error('bad');
-            instance.random.sample.throws(expected);
-            return instance.magic8({
-                args: [],
-                reply: () => 0
-            }).should.be.rejectedWith(expected);
-        });
-    });
     describe('shuffle', () => {
-        let instance = null;
+        let instance = null,
+            shuffle = null;
         const randomized = [4, 0, 2, 9, 5, 1, 7, 6, 8, 3];
         beforeEach(() => {
-            instance = randomizer({}, {});
-            instance.random = {
-                shuffle: sinon.stub().returns(randomized)
+            instance = {
+                random: {
+                    shuffle: sinon.stub().returns(randomized)
+                }
             };
+            shuffle = randomizer.randomFns.shuffle.bind(instance);
         });
         it('should return a promise', () => {
-            return instance.shuffle({
+            return shuffle({
                 args: [1, 2],
                 reply: () => 0
             }).should.be.fulfilled;
         });
         it('should shuffle input', () => {
             const input = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-            return instance.shuffle({
+            return shuffle({
                 args: input,
                 reply: () => 0
             }).then(() => {
@@ -203,7 +187,7 @@ describe('sockbot-plugin-randomizer', () => {
         });
         it('should reply with input as part of the response', () => {
             const spy = sinon.spy();
-            return instance.shuffle({
+            return shuffle({
                 args: [1, 2],
                 reply: spy
             }).then(() => {
@@ -214,7 +198,7 @@ describe('sockbot-plugin-randomizer', () => {
             const input = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
             const expected = input.join(', ');
             const spy = sinon.spy();
-            return instance.shuffle({
+            return shuffle({
                 args: input,
                 reply: spy
             }).then(() => {
@@ -226,7 +210,7 @@ describe('sockbot-plugin-randomizer', () => {
             const input = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
             const expected = randomized.join(', ');
             const spy = sinon.spy();
-            return instance.shuffle({
+            return shuffle({
                 args: input,
                 reply: spy
             }).then(() => {
@@ -237,23 +221,26 @@ describe('sockbot-plugin-randomizer', () => {
     });
     describe('wasteaguid', () => {
         let instance = null,
-            randomized = null;
+            randomized = null,
+            wasteaguid = null;
         beforeEach(() => {
             randomized = `GUID${Math.random()}`;
-            instance = randomizer({}, {});
-            instance.random = {
-                uuid4: sinon.stub().returns(randomized)
+            instance = {
+                random: {
+                    uuid4: sinon.stub().returns(randomized)
+                }
             };
+            wasteaguid = randomizer.randomFns.wasteaguid.bind(instance);
         });
         it('should return a promise', () => {
-            return instance.wasteaguid({
+            return wasteaguid({
                 args: [],
                 reply: () => 0
             }).should.be.fulfilled;
         });
         it('should reply with spiritual response', () => {
             const spy = sinon.spy();
-            return instance.wasteaguid({
+            return wasteaguid({
                 args: [],
                 reply: spy
             }).then(() => {
@@ -263,7 +250,7 @@ describe('sockbot-plugin-randomizer', () => {
         });
         it('select guid from random source', () => {
             const spy = sinon.spy();
-            return instance.wasteaguid({
+            return wasteaguid({
                 args: [],
                 reply: spy
             }).then(() => {
@@ -273,10 +260,136 @@ describe('sockbot-plugin-randomizer', () => {
         it('should reject when sample throws', () => {
             const expected = new Error('bad');
             instance.random.uuid4.throws(expected);
-            return instance.wasteaguid({
+            return wasteaguid({
                 args: [],
                 reply: () => 0
             }).should.be.rejectedWith(expected);
+        });
+    });
+    describe('magic8', () => {
+        let instance = null,
+            randomized = null,
+            magic8 = null;
+        beforeEach(() => {
+            randomized = [`answer${Math.random()}`];
+            instance = {
+                random: {
+                    sample: sinon.stub().returns(randomized)
+                }
+            };
+            magic8 = randomizer.randomFns.magic8.bind(instance);
+        });
+        it('should return a promise', () => {
+            return magic8({
+                args: [],
+                reply: () => 0
+            }).should.be.fulfilled;
+        });
+        it('should reply with spiritual response', () => {
+            const spy = sinon.spy();
+            return magic8({
+                args: [],
+                reply: spy
+            }).then(() => {
+                spy.calledWith(`The spirits say.... ${randomized}`).should.be.true;
+            });
+        });
+        it('select response from standard responses', () => {
+            const spy = sinon.spy();
+            return magic8({
+                args: [],
+                reply: spy
+            }).then(() => {
+                instance.random.sample.calledWith(randomizer.randomFns.magic8.responses, 1).should.be.true;
+            });
+        });
+        it('should reject when sample throws', () => {
+            const expected = new Error('bad');
+            instance.random.sample.throws(expected);
+            return magic8({
+                args: [],
+                reply: () => 0
+            }).should.be.rejectedWith(expected);
+        });
+    });
+    describe('password', () => {
+        let instance = null,
+            randomized = null,
+            password = null;
+        beforeEach(() => {
+            randomized = `answer${Math.random()}`;
+            instance = {
+                random: {
+                    string: sinon.stub().returns(randomized)
+                }
+            };
+            password = randomizer.randomFns.password.bind(instance);
+        });
+        it('should return a promise', () => {
+            return password({
+                args: [],
+                parent: {
+                    ids: {}
+                },
+                reply: () => 0
+            }).should.be.fulfilled;
+        });
+        it('should generate password from unambiguous charset', () => {
+            return password({
+                args: [],
+                parent: {
+                    ids: {}
+                },
+                reply: () => 0
+            }).then(() => {
+                const unambiguous = '23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz_';
+                instance.random.string.calledWith(32, unambiguous).should.be.true;
+            });
+        });
+        it('should reply with generated password', () => {
+            const spy = sinon.spy();
+            return password({
+                args: [],
+                parent: {
+                    ids: {}
+                },
+                reply: spy
+            }).then(() => {
+                const text = spy.firstCall.args[0];
+                text.should.endWith(randomized);
+            });
+        });
+        it('should snark if password is generated in public', () => {
+            const spy = sinon.spy();
+            return password({
+                args: [],
+                parent: {
+                    ids: {
+                        post: 8472
+                    }
+                },
+                reply: spy
+            }).then(() => {
+                const text = spy.firstCall.args[0];
+                text.should.contain('Precompromised Password');
+                text.should.not.contain('Generated Password');
+            });
+        });
+        it('should not snark if password is generated in private', () => {
+            const spy = sinon.spy();
+            return password({
+                args: [],
+                parent: {
+                    ids: {
+                        post: -1
+                    }
+                },
+                reply: spy
+            }).then(() => {
+                const text = spy.firstCall.args[0];
+                text.should.not.contain('Precompromised Password');
+                text.should.contain('Generated Password');
+            });
         });
     });
     describe('activate()', () => {
@@ -324,60 +437,120 @@ describe('sockbot-plugin-randomizer', () => {
                 engine.autoSeed.called.should.be.true;
             });
         });
-        it('should add shuffle command when config enables shuffle', () => {
-            config.shuffle = true;
-            return instance.activate().then(() => {
-                const text = 'Shuffle arguments into a random order';
-                Commands.add.calledWith('shuffle', text, instance.shuffle).should.be.true;
-                Commands.add.alwaysCalledOn(Commands).should.be.true;
+        Object.keys(randomizer.randomFns).forEach((command) => {
+            describe(`command registration: ${command}`, () => {
+                let original = null;
+                beforeEach(() => {
+                    original = randomizer.randomFns[command];
+                    randomizer.randomFns[command] = sinon.stub().resolves();
+                    randomizer.randomFns[command].help = original.help;
+                    Object.keys(config).forEach((key) => {
+                        config[key] = false;
+                    });
+                });
+                afterEach(() => {
+                    randomizer.randomFns[command] = original;
+                });
+                it('should not add command when config disables', () => {
+                    config[command] = false;
+                    return instance.activate().then(() => {
+                        Commands.add.calledWith(command).should.be.false;
+                    });
+                });
+                it('should add command when config enables', () => {
+                    config[command] = true;
+                    return instance.activate().then(() => {
+                        const text = randomizer.randomFns[command].help;
+                        Commands.add.calledWith(command, text).should.be.true;
+                        Commands.add.alwaysCalledOn(Commands).should.be.true;
+                    });
+                });
+                it('should passthrough command handler to configured', () => {
+                    config[command] = true;
+                    return instance.activate()
+                        .then(() => Commands.add.firstCall.args[2]())
+                        .then(() => {
+                            randomizer.randomFns[command].called.should.be.true;
+                        });
+                });
+                it('should passthrough command handler to configured with bound this value', () => {
+                    config[command] = true;
+                    return instance.activate()
+                        .then(() => Commands.add.firstCall.args[2]())
+                        .then(() => {
+                            randomizer.randomFns[command].calledOn(instance).should.be.true;
+                        });
+                });
             });
         });
-        it('should not add shuffle command when config disables shuffle', () => {
-            config.shuffle = false;
-            return instance.activate().then(() => {
-                Commands.add.calledWith('shuffle').should.be.false;
+    });
+    describe('decide', () => {
+        let instance = null,
+            decide = null;
+        beforeEach(() => {
+            instance = {
+                random: {
+                    bool: sinon.stub().returns(true)
+                }
+            };
+            decide = randomizer.randomFns.decide.bind(instance);
+        });
+        it('should return a promise', () => {
+            return decide({
+                reply: () => 0
+            }).should.be.resolved;
+        });
+        it('should reply in the affirmative', () => {
+            instance.random.bool.returns(true);
+            const spy = sinon.spy();
+            return decide({
+                reply: spy
+            }).then(() => {
+                spy.calledWith('Of course!').should.be.true;
             });
         });
-        it('should add pick command when config enables pick', () => {
-            config.pick = true;
-            return instance.activate().then(() => {
-                const text = 'pick elements from arguments';
-                Commands.add.calledWith('pick', text, instance.pick).should.be.true;
-                Commands.add.alwaysCalledOn(Commands).should.be.true;
+        it('should reply in the negative', () => {
+            instance.random.bool.returns(false);
+            const spy = sinon.spy();
+            return decide({
+                reply: spy
+            }).then(() => {
+                spy.calledWith('Absolutely not!').should.be.true;
             });
         });
-        it('should not add pick command when config disables pick', () => {
-            config.pick = false;
-            return instance.activate().then(() => {
-                Commands.add.calledWith('pick').should.be.false;
+    });
+    describe('flip', () => {
+        let instance = null,
+            flip = null;
+        beforeEach(() => {
+            instance = {
+                random: {
+                    bool: sinon.stub().returns(true)
+                }
+            };
+            flip = randomizer.randomFns.flip.bind(instance);
+        });
+        it('should return a promise', () => {
+            return flip({
+                reply: () => 0
+            }).should.be.resolved;
+        });
+        it('should reply in the affirmative', () => {
+            instance.random.bool.returns(true);
+            const spy = sinon.spy();
+            return flip({
+                reply: spy
+            }).then(() => {
+                spy.calledWith('Heads.').should.be.true;
             });
         });
-        it('should add magic8 command when config enables magic8', () => {
-            config.magic8 = true;
-            return instance.activate().then(() => {
-                const text = 'consult the spirits for guidance';
-                Commands.add.calledWith('magic8', text, instance.magic8).should.be.true;
-                Commands.add.alwaysCalledOn(Commands).should.be.true;
-            });
-        });
-        it('should not add magic8 command when config disables magic8', () => {
-            config.magic8 = false;
-            return instance.activate().then(() => {
-                Commands.add.calledWith('magic8').should.be.false;
-            });
-        });
-        it('should add wasteaguid command when config enables wasteaguid', () => {
-            config.wasteaguid = true;
-            return instance.activate().then(() => {
-                const text = 'waste a GUID';
-                Commands.add.calledWith('wasteaguid', text, instance.wasteaguid).should.be.true;
-                Commands.add.alwaysCalledOn(Commands).should.be.true;
-            });
-        });
-        it('should not add wasteaguid command when config disables wasteaguid', () => {
-            config.wasteaguid = false;
-            return instance.activate().then(() => {
-                Commands.add.calledWith('wasteaguid').should.be.false;
+        it('should reply in the negative', () => {
+            instance.random.bool.returns(false);
+            const spy = sinon.spy();
+            return flip({
+                reply: spy
+            }).then(() => {
+                spy.calledWith('Tails.').should.be.true;
             });
         });
     });
