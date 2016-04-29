@@ -11,6 +11,24 @@ const defaultConfig = {
     crypto: true
 };
 
+/**
+ * Reply with one ot the other texts randomly
+ *
+ * @param {Command} command the command to process
+ * @param {Random} random source of randomness
+ * @param {string} eitherValue one value
+ * @param {string} orValue other value
+ *
+ * @returns {Promise} Resolves when processing is complete
+ */
+function eitherOr(command, random, eitherValue, orValue) {
+    return new Promise((resolve) => {
+        const value = random.bool();
+        command.reply(value ? eitherValue : orValue);
+        resolve();
+    });
+}
+
 const randomFns = {
     /**
      * Pick items from the arguments of the command and reply with results
@@ -105,11 +123,7 @@ const randomFns = {
      * @returns {Promise} Resolves when processing is complete
      */
     decide: function decide(command) {
-        return new Promise((resolve) => {
-            const value = this.random.bool();
-            command.reply(value ? 'Of course!' : 'Absolutely not!');
-            resolve();
-        });
+        return eitherOr(command, this.random, 'Of course!', 'Absolutely not!');
     },
     /**
      * Flip a coin
@@ -119,11 +133,7 @@ const randomFns = {
      * @returns {Promise} Resolves when processing is complete
      */
     flip: function flip(command) {
-        return new Promise((resolve) => {
-            const value = this.random.bool();
-            command.reply(value ? 'Heads.' : 'Tails.');
-            resolve();
-        });
+        return eitherOr(command, this.random, 'Heads.', 'Tails.');
     }
 
 };
