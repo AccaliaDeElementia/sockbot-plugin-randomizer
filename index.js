@@ -165,6 +165,7 @@ randomFns.magic8.help = 'consult the spirits for guidance';
 randomFns.password.help = 'generate a "secure" password';
 randomFns.decide.help = 'decide a yes/no questiion';
 randomFns.flip.help = 'flip a coin';
+randomFns.try.help = 'attempt a thing with a chance of success';
 
 randomFns.magic8.responses = [
     'It is certain',
