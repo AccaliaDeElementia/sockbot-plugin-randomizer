@@ -134,8 +134,29 @@ const randomFns = {
      */
     flip: function flip(command) {
         return eitherOr(command, this.random, 'Heads.', 'Tails.');
+    },
+    /**
+     * Attempt a thing with a certain chance of failure.
+     *
+     * @param {Command} command the command to process
+     *
+     * @returns {Promise} Resolves when processing is complete
+     */
+    'try': function tryit(command) {
+        return new Promise((resolve) => {
+            const percentText = command.args.shift();
+            let percent = parseFloat(percentText);
+            if (isNaN(percent) || percent < 0 || percent > 1) {
+                percent = 0.5;
+                command.args.unshift(percentText);
+            }
+            const value = this.random.real(0, 1);
+            const result = value <= percent ? 'Success' : 'Failure';
+            const text = `${command.args.join(' ')} p(${Math.round(percent * 100) / 100}): ${result}`;
+            command.reply(text);
+            resolve();
+        });
     }
-
 };
 randomFns.pick.help = 'pick elements from arguments';
 randomFns.shuffle.help = 'shuffle arguments into a random order';

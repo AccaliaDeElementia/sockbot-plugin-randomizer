@@ -554,4 +554,118 @@ describe('sockbot-plugin-randomizer', () => {
             });
         });
     });
+    describe('try', () => {
+        let instance = null,
+            tryFn = null;
+        beforeEach(() => {
+            instance = {
+                random: {
+                    real: sinon.stub().returns(0.5)
+                }
+            };
+            tryFn = randomizer.randomFns.try.bind(instance);
+        });
+        it('should return a promise', () => {
+            return tryFn({
+                args: [],
+                reply: () => 0
+            }).should.be.resolved;
+        });
+        it('should reply in the positive', () => {
+            let replyText = null;
+            instance.random.real.returns(0.4);
+            return tryFn({
+                args: [0.5],
+                reply: (text) => {
+                    replyText = text;
+                }
+            }).then(() => {
+                replyText.should.endWith('Success');
+            });
+        });
+        it('should reply in the positive', () => {
+            let replyText = null;
+            instance.random.real.returns(0.6);
+            return tryFn({
+                args: [0.5],
+                reply: (text) => {
+                    replyText = text;
+                }
+            }).then(() => {
+                replyText.should.endWith('Failure');
+            });
+        });
+        it('should reply with chance percentage', () => {
+            let replyText = null;
+            instance.random.real.returns(0.6);
+            const chance = Math.random();
+            const chanceText = `p(${Math.round(chance * 100) / 100})`;
+            return tryFn({
+                args: [chance],
+                reply: (text) => {
+                    replyText = text;
+                }
+            }).then(() => {
+                replyText.should.contain(chanceText);
+            });
+        });
+        it('should use default percentage with NaN chance', () => {
+            let replyText = null;
+            return tryFn({
+                args: ['abc'],
+                reply: (text) => {
+                    replyText = text;
+                }
+            }).then(() => {
+                replyText.should.contain('p(0.5)');
+            });
+        });
+        it('should use default percentage with subzero chance', () => {
+            let replyText = null;
+            return tryFn({
+                args: ['-0.5'],
+                reply: (text) => {
+                    replyText = text;
+                }
+            }).then(() => {
+                replyText.should.contain('p(0.5)');
+            });
+        });
+        it('should use default percentage with superunity chance', () => {
+            let replyText = null;
+            return tryFn({
+                args: ['1.5'],
+                reply: (text) => {
+                    replyText = text;
+                }
+            }).then(() => {
+                replyText.should.contain('p(0.5)');
+            });
+        });
+        it('should reply with notes text', () => {
+            let replyText = null;
+            const expected = 'i am the captain';
+            return tryFn({
+                args: [0.9, 'i', 'am', 'the', 'captain'],
+                reply: (text) => {
+                    replyText = text;
+                }
+            }).then(() => {
+                replyText.should.startWith(expected);
+            });
+        });
+        it('should reply with notes text when using default percentage', () => {
+            let replyText = null;
+            const expected = '-0.9 i am the captain';
+            return tryFn({
+                args: [-0.9, 'i', 'am', 'the', 'captain'],
+                reply: (text) => {
+                    replyText = text;
+                }
+            }).then(() => {
+                replyText.should.startWith(expected);
+            });
+        });
+
+    });
 });
